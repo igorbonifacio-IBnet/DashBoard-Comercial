@@ -438,9 +438,18 @@ function populateFilters() {
     'f-plano':  'Plano Contratado',
     'f-bairro': 'Regiao/Bairro'
   };
+  const mesOrder = SHEETS.map(s => s.label);
   Object.entries(fields).forEach(([id, col]) => {
     const sel = document.getElementById(id);
-    const vals = [...new Set(allData.map(r => r[col]).filter(Boolean))].sort();
+    let vals = [...new Set(allData.map(r => r[col]).filter(Boolean))];
+    if (col === 'Mes') {
+      vals.sort((a, b) => {
+        const ai = mesOrder.indexOf(a), bi = mesOrder.indexOf(b);
+        return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+      });
+    } else {
+      vals.sort();
+    }
     const cur = sel.value;
     sel.innerHTML = '<option value="">Todos</option>' +
       vals.map(v => `<option value="${v}"${v===cur?' selected':''}>${v}</option>`).join('');
@@ -487,12 +496,13 @@ function updateKPIs() {
   const cancelados = count('Status do Pagamento', 'Cancelado');
   const ativos     = total - cancelados;
 
+  const val = r => parseValor(r['Valor mensal num'] || r['Valor Mensal (R$)'] || '');
   const mrr = d.filter(r => r['Status do Pagamento'] !== 'Cancelado')
-               .reduce((s, r) => s + parseValor(r['Valor Mensal (R$)']), 0);
+               .reduce((s, r) => s + val(r), 0);
   const recReal  = d.filter(r => r['Status do Pagamento'] === 'Pago')
-                    .reduce((s, r) => s + parseValor(r['Valor Mensal (R$)']), 0);
+                    .reduce((s, r) => s + val(r), 0);
   const recRisco = d.filter(r => r['Status do Pagamento'] === 'Em atraso')
-                    .reduce((s, r) => s + parseValor(r['Valor Mensal (R$)']), 0);
+                    .reduce((s, r) => s + val(r), 0);
   const ticket = ativos > 0 ? mrr / ativos : 0;
 
   setText('k-total',      total);
@@ -590,7 +600,7 @@ function updateCharts() {
   const mrr = {};
   filteredData.filter(r => r['Status do Pagamento'] !== 'Cancelado').forEach(r => {
     const m = r['Mes']||'—';
-    mrr[m] = (mrr[m]||0) + parseValor(r['Valor Mensal (R$)']);
+    mrr[m] = (mrr[m]||0) + parseValor(r['Valor mensal num'] || r['Valor Mensal (R$)'] || '');
   });
   const ctx = document.getElementById('chart-mes').getContext('2d');
   if (charts['chart-mes']) charts['chart-mes'].destroy();
@@ -627,7 +637,7 @@ function sortBy(key) {
 
 const SORT_MAP = {
   mes:'Mes', id:'ID Venda', nome:'Nome do Cliente', pop:'POP',
-  bairro:'Regiao/Bairro', plano:'Plano Contratado', valor:'Valor Mensal (R$)',
+  bairro:'Regiao/Bairro', plano:'Plano Contratado', valor:'Valor mensal num',
   status:'Status do Pagamento', venc:'Data de Vencimento', dias:'Dias em Atraso'
 };
 
@@ -642,7 +652,7 @@ function renderTable() {
   const col = SORT_MAP[sortKey] || 'Mes';
   rows.sort((a, b) => {
     let av = a[col]||'', bv = b[col]||'';
-    if (col === 'Valor Mensal (R$)') { av = parseValor(av); bv = parseValor(bv); }
+    if (col === 'Valor mensal num') { av = parseValor(av); bv = parseValor(bv); }
     else if (col === 'ID Venda' || col === 'Dias em Atraso') { av = +av||0; bv = +bv||0; }
     return av < bv ? -sortDir : av > bv ? sortDir : 0;
   });
@@ -661,7 +671,7 @@ function renderTable() {
       <td>${r['POP']||'—'}</td>
       <td class="nome-col" title="${r['Regiao/Bairro']}">${r['Regiao/Bairro']||'—'}</td>
       <td>${r['Plano Contratado']||'—'}</td>
-      <td>${r['Valor Mensal (R$)']||'—'}</td>
+      <td>${r['Valor mensal num'] || r['Valor Mensal (R$)'] ||'—'}</td>
       <td>${statusBadge(r['Status do Pagamento'])}</td>
       <td>${r['Data de Vencimento']||'—'}</td>
       <td style="color:${+r['Dias em Atraso']>0?'var(--red)':'var(--muted)'}">${r['Dias em Atraso']||'0'}</td>
