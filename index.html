@@ -337,7 +337,8 @@
 // ═══════════════════════════════════════════════════════════════
 //  CONFIG
 // ═══════════════════════════════════════════════════════════════
-const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTO4C7KHouvCnsPkeRYcA4z0vC1hr5svw7iQ-J6BCzMOX7LnaRBnAwrsFr6k2PA66fF5Zhqt1R5SVKr/pub?output=csv';
+const SHEET_ID = '1Tw_1VOAC3lzm_cAIcPx9q8ekoJU4r7ZzJG9Qavov_Xo';
+const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
 const ROWS_PER_PAGE = 20;
 
 let allData = [];
@@ -395,7 +396,7 @@ async function loadData() {
   btn.classList.add('loading');
   btn.textContent = '⟳ Atualizando...';
   try {
-    const res = await fetch(CSV_URL + '&t=' + Date.now());
+    const res = await fetch(CSV_URL + '&t=' + Date.now(), { cache: 'no-store' });
     const text = await res.text();
     allData = parseCSV(text);
     populateFilters();
