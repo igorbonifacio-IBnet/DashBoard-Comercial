@@ -338,7 +338,11 @@
 //  CONFIG
 // ═══════════════════════════════════════════════════════════════
 const SHEET_ID = '1Tw_1VOAC3lzm_cAIcPx9q8ekoJU4r7ZzJG9Qavov_Xo';
-const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
+// Adicione aqui cada nova aba mensal conforme for criando
+const SHEETS = [
+  { name: 'FEV2026', label: 'fev./2026' },
+  { name: 'MAR2026', label: 'mar./2026' },
+];
 const ROWS_PER_PAGE = 20;
 
 let allData = [];
@@ -391,14 +395,24 @@ function statusBadge(s) {
 // ═══════════════════════════════════════════════════════════════
 //  LOAD DATA
 // ═══════════════════════════════════════════════════════════════
+async function fetchSheet(sheetName, label) {
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}&t=${Date.now()}`;
+  const res = await fetch(url, { cache: 'no-store' });
+  const text = await res.text();
+  const rows = parseCSV(text);
+  // inject Mes column if not present
+  return rows
+    .filter(r => r['Nome do Cliente'] && r['ID Venda'])
+    .map(r => ({ ...r, 'Mes': r['Mes'] || label }));
+}
+
 async function loadData() {
   const btn = document.getElementById('refresh-btn');
   btn.classList.add('loading');
   btn.textContent = '⟳ Atualizando...';
   try {
-    const res = await fetch(CSV_URL + '&t=' + Date.now(), { cache: 'no-store' });
-    const text = await res.text();
-    allData = parseCSV(text);
+    const results = await Promise.all(SHEETS.map(s => fetchSheet(s.name, s.label)));
+    allData = results.flat();
     populateFilters();
     applyFilters();
     document.getElementById('last-update').textContent =
